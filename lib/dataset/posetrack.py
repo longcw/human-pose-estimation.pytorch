@@ -19,6 +19,7 @@ import numpy as np
 
 from dataset.JointsDataset import JointsDataset
 from nms.nms import oks_nms
+from third_part.poseval.evaluate import evaluate as posetrack_evaluate
 
 
 logger = logging.getLogger(__name__)
@@ -93,9 +94,8 @@ class PoseTrackDataset(JointsDataset):
 
             # select images
             for image in images:
-                if not self.use_gt_bbox or image['is_labeled']:
-                    image['seq_name'] = seq_name
-                    all_images_dict[image['id']] = image
+                image['seq_name'] = seq_name
+                all_images_dict[image['id']] = image
 
             # index annotations by image_id
             for anno in annotations:
@@ -112,7 +112,7 @@ class PoseTrackDataset(JointsDataset):
         if self.use_gt_bbox:
             return self._get_gt_db()
         else:
-            assert False
+            return self._load_coco_person_detection_results()
 
     def _get_gt_db(self):
         assert self.use_gt_bbox
@@ -144,6 +144,50 @@ class PoseTrackDataset(JointsDataset):
                 })
         return gt_db
 
+    def _load_coco_person_detection_results(self):
+        with open(self.bbox_file, 'r') as f:
+            all_boxes = json.load(f)
+
+        if not all_boxes:
+            logger.error('=> Load %s fail!' % self.bbox_file)
+            return None
+
+        logger.info('=> Total boxes: {}'.format(len(all_boxes)))
+
+        kpt_db = []
+        num_boxes = 0
+        for n_img in range(0, len(all_boxes)):
+            det_res = all_boxes[n_img]
+            if det_res['category_id'] != 1:
+                continue
+
+            image = self.all_images_dict[det_res['image_id']]
+            image_path = os.path.join(self.root, image['file_name'])
+            box = det_res['bbox']
+            score = det_res['score']
+
+            if score < self.image_thre:
+                continue
+
+            num_boxes = num_boxes + 1
+
+            center, scale = self._box2cs(box)
+            joints_3d = np.zeros((self.num_joints, 3), dtype=np.float)
+            joints_3d_vis = np.ones(
+                (self.num_joints, 3), dtype=np.float)
+            kpt_db.append({
+                'image': image_path,
+                'center': center,
+                'scale': scale,
+                'score': score,
+                'joints_3d': joints_3d,
+                'joints_3d_vis': joints_3d_vis,
+            })
+
+        logger.info('=> Total boxes after fliter low score@{}: {}'.format(
+            self.image_thre, num_boxes))
+        return kpt_db
+
     def _box2cs(self, box):
         x, y, w, h = box[:4]
         return self._xywh2cs(x, y, w, h)
@@ -164,49 +208,6 @@ class PoseTrackDataset(JointsDataset):
             scale = scale * 1.25
 
         return center, scale
-
-    def _load_coco_person_detection_results(self):
-        all_boxes = None
-        with open(self.bbox_file, 'r') as f:
-            all_boxes = json.load(f)
-
-        if not all_boxes:
-            logger.error('=> Load %s fail!' % self.bbox_file)
-            return None
-
-        logger.info('=> Total boxes: {}'.format(len(all_boxes)))
-
-        kpt_db = []
-        num_boxes = 0
-        for n_img in range(0, len(all_boxes)):
-            det_res = all_boxes[n_img]
-            if det_res['category_id'] != 1:
-                continue
-            img_name = self.image_path_from_index(det_res['image_id'])
-            box = det_res['bbox']
-            score = det_res['score']
-
-            if score < self.image_thre:
-                continue
-
-            num_boxes = num_boxes + 1
-
-            center, scale = self._box2cs(box)
-            joints_3d = np.zeros((self.num_joints, 3), dtype=np.float)
-            joints_3d_vis = np.ones(
-                (self.num_joints, 3), dtype=np.float)
-            kpt_db.append({
-                'image': img_name,
-                'center': center,
-                'scale': scale,
-                'score': score,
-                'joints_3d': joints_3d,
-                'joints_3d_vis': joints_3d_vis,
-            })
-
-        logger.info('=> Total boxes after fliter low score@{}: {}'.format(
-            self.image_thre, num_boxes))
-        return kpt_db
 
     # need double check this API and classes field
     def evaluate(self, cfg, preds, output_dir, all_boxes, img_path, image_ids, *args, **kwargs):
@@ -257,24 +258,15 @@ class PoseTrackDataset(JointsDataset):
                 oks_nmsed_kpts[image_id] = [img_kpts[_keep] for _keep in keep]
 
         self._write_posetrack_keypoint_results(oks_nmsed_kpts, res_folder)
-        return {'Null': 0}, 0
-
-        # if 'test' not in self.image_set:
-        #     info_str = self._do_python_keypoint_eval(
-        #         res_file, res_folder)
-        #     name_value = OrderedDict(info_str)
-        #     return name_value, name_value['AP']
-        # else:
-        #     return {'Null': 0}, 0
+        if 'test' not in self.image_set:
+            return self._do_python_keypoint_eval(res_folder)
+        else:
+            return {'Null': 0}, 0
 
     def _write_posetrack_keypoint_results(self, keypoints_dict, res_folder):
-        def makedirs(path):
-            if not os.path.exists(path):
-                os.makedirs(path)
-
         all_results_dict = {}
-        for image_id, image_kpts in keypoints_dict.items():
-            image = self.all_images_dict[image_id]
+        # write images
+        for image_id, image in self.all_images_dict.items():
             seq_name = image['seq_name']
             all_results_dict.setdefault(seq_name, {
                 'images': [],
@@ -282,46 +274,39 @@ class PoseTrackDataset(JointsDataset):
             })
             all_results_dict[seq_name]['images'].append(image)
 
+        # write keypoints
+        for image_id, image_kpts in keypoints_dict.items():
+            image = self.all_images_dict[image_id]
+            seq_name = image['seq_name']
+
             for kpt_dict in image_kpts:
                 keypoints = np.asarray(kpt_dict['keypoints'], dtype=float)
                 scores = np.copy(keypoints[:, 2])
                 anno = {
-                    'image_id': image_id,
+                    'image_id': int(image_id),
                     'track_id': -1,
                     'keypoints': keypoints.reshape(-1).tolist(),
                     'scores': scores.tolist()
                 }
                 all_results_dict[seq_name]['annotations'].append(anno)
 
-            # set categories
-            for seq_name in all_results_dict.keys():
-                all_results_dict[seq_name]['categories'] = self.seq_categories_dict[seq_name]
+        # write categories
+        for seq_name in all_results_dict.keys():
+            all_results_dict[seq_name]['categories'] = self.seq_categories_dict[seq_name]
 
-            # write results
-            for seq_name, results in all_results_dict.items():
-                res_file = os.path.join(res_folder, '{}.json'.format(seq_name))
-                logger.info('=> Writing results json to %s' % res_file)
-                with open(res_file, 'w') as f:
-                    json.dump(results, f)
+        # write results
+        for seq_name, results in all_results_dict.items():
+            res_file = os.path.join(res_folder, '{}.json'.format(seq_name))
+            logger.info('=> Writing results json to %s' % res_file)
+            with open(res_file, 'w') as f:
+                json.dump(results, f)
 
-    def _do_python_keypoint_eval(self, res_file, res_folder):
-        coco_dt = self.coco.loadRes(res_file)
-        coco_eval = COCOeval(self.coco, coco_dt, 'keypoints')
-        coco_eval.params.useSegm = None
-        coco_eval.evaluate()
-        coco_eval.accumulate()
-        coco_eval.summarize()
-        stats_names = ['AP', 'Ap .5', 'AP .75', 'AP (M)', 'AP (L)', 'AR', 'AR .5', 'AR .75', 'AR (M)', 'AR (L)']
+    def _do_python_keypoint_eval(self, res_folder):
+        anno_root = os.path.join(self.root, 'annotations', self.image_set)
+        output_folder = os.path.join(os.path.dirname(res_folder), 'eval_output')
+        name_values, perf_indicator = posetrack_evaluate(anno_root, res_folder, output_folder,
+                                                         eval_pose=True, eval_tracking=False, save_per_seq=False)
 
-        info_str = []
-        for ind, name in enumerate(stats_names):
-            info_str.append((name, coco_eval.stats[ind]))
+        logger.info('=> coco eval results saved to %s' % output_folder)
 
-        eval_file = os.path.join(
-            res_folder, 'keypoints_%s_results.pkl' % self.image_set)
-
-        with open(eval_file, 'wb') as f:
-            pickle.dump(coco_eval, f, pickle.HIGHEST_PROTOCOL)
-        logger.info('=> coco eval results saved to %s' % eval_file)
-
-        return info_str
+        return name_values, perf_indicator
