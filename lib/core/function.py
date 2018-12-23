@@ -100,8 +100,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
                          dtype=np.float32)
     all_boxes = np.zeros((num_samples, 6))
     image_path = []
-    filenames = []
-    imgnums = []
+    image_ids = []
     idx = 0
     with torch.no_grad():
         end = time.time()
@@ -159,8 +158,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
             all_boxes[idx:idx + num_images, 5] = score
             image_path.extend(meta['image'])
             if config.DATASET.DATASET == 'posetrack':
-                filenames.extend(meta['filename'])
-                imgnums.extend(meta['imgnum'].numpy())
+                image_ids.extend(meta['image_id'].numpy())
 
             idx += num_images
 
@@ -178,8 +176,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
                                   prefix)
 
         name_values, perf_indicator = val_dataset.evaluate(
-            config, all_preds, output_dir, all_boxes, image_path,
-            filenames, imgnums)
+            config, all_preds, output_dir, all_boxes, image_path, image_ids=image_ids)
 
         _, full_arch_name = get_model_name(config)
         if isinstance(name_values, list):

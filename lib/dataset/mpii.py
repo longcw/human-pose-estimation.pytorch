@@ -23,8 +23,25 @@ logger = logging.getLogger(__name__)
 
 
 class MPIIDataset(JointsDataset):
+    """
+    {{0, "Head"}, //head top
+    {1, "Neck"}, //upper neck
+    {2, "RShoulder"}, //r shoulder
+    {3, "RElbow"}, // r elbow
+    {4, "RWrist"}, // r wrist
+    {5, "LShoulder"}, // l shoulder
+    {6, "LElbow"}, // l elbow
+    {7, "LWrist"}, // l wrist
+    {8, "RHip"}, //r hip
+    {9, "RKnee"}, // r knee
+    {10, "RAnkle"}, //r ankle
+    {11, "LHip"}, //l hip
+    {12, "LKnee"}, //l knee
+    {13, "LAnkle"},//l ankle
+    {14, "Chest"},// thorax}
+    """
     def __init__(self, cfg, root, image_set, is_train, transform=None):
-        super().__init__(cfg, root, image_set, is_train, transform)
+        super(MPIIDataset, self).__init__(cfg, root, image_set, is_train, transform)
 
         self.num_joints = 16
         self.flip_pairs = [[0, 5], [1, 4], [2, 3], [10, 15], [11, 14], [12, 13]]
@@ -82,8 +99,6 @@ class MPIIDataset(JointsDataset):
                 'scale': s,
                 'joints_3d': joints_3d,
                 'joints_3d_vis': joints_3d_vis,
-                'filename': '',
-                'imgnum': 0,
                 })
 
         return gt_db

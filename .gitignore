@@ -105,3 +105,6 @@ venv.bak/
 /output
 /models
 /log
+.idea
+lib/nms/cpu_nms.c
+lib/nms/gpu_nms.cpp

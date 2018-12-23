@@ -109,31 +109,7 @@ def main():
     logger.info(pprint.pformat(args))
     logger.info(pprint.pformat(config))
 
-    # cudnn related setting
-    cudnn.benchmark = config.CUDNN.BENCHMARK
-    torch.backends.cudnn.deterministic = config.CUDNN.DETERMINISTIC
-    torch.backends.cudnn.enabled = config.CUDNN.ENABLED
-
-    model = eval('models.'+config.MODEL.NAME+'.get_pose_net')(
-        config, is_train=False
-    )
-
-    if config.TEST.MODEL_FILE:
-        logger.info('=> loading model from {}'.format(config.TEST.MODEL_FILE))
-        model.load_state_dict(torch.load(config.TEST.MODEL_FILE))
-    else:
-        model_state_file = os.path.join(final_output_dir,
-                                        'final_state.pth.tar')
-        logger.info('=> loading model from {}'.format(model_state_file))
-        model.load_state_dict(torch.load(model_state_file))
-
     gpus = [int(i) for i in config.GPUS.split(',')]
-    model = torch.nn.DataParallel(model, device_ids=gpus).cuda()
-
-    # define loss function (criterion) and optimizer
-    criterion = JointsMSELoss(
-        use_target_weight=config.LOSS.USE_TARGET_WEIGHT
-    ).cuda()
 
     # Data loading code
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -155,6 +131,31 @@ def main():
         num_workers=config.WORKERS,
         pin_memory=True
     )
+
+    # cudnn related setting
+    cudnn.benchmark = config.CUDNN.BENCHMARK
+    torch.backends.cudnn.deterministic = config.CUDNN.DETERMINISTIC
+    torch.backends.cudnn.enabled = config.CUDNN.ENABLED
+
+    model = eval('models.'+config.MODEL.NAME+'.get_pose_net')(
+        config, is_train=False
+    )
+
+    if config.TEST.MODEL_FILE:
+        logger.info('=> loading model from {}'.format(config.TEST.MODEL_FILE))
+        model.load_state_dict(torch.load(config.TEST.MODEL_FILE))
+    else:
+        model_state_file = os.path.join(final_output_dir,
+                                        'final_state.pth.tar')
+        logger.info('=> loading model from {}'.format(model_state_file))
+        model.load_state_dict(torch.load(model_state_file))
+
+    model = torch.nn.DataParallel(model, device_ids=gpus).cuda()
+
+    # define loss function (criterion) and optimizer
+    criterion = JointsMSELoss(
+        use_target_weight=config.LOSS.USE_TARGET_WEIGHT
+    ).cuda()
 
     # evaluate on validation set
     validate(config, valid_loader, valid_dataset, model, criterion,

@@ -64,8 +64,7 @@ class JointsDataset(Dataset):
         db_rec = copy.deepcopy(self.db[idx])
 
         image_file = db_rec['image']
-        filename = db_rec['filename'] if 'filename' in db_rec else ''
-        imgnum = db_rec['imgnum'] if 'imgnum' in db_rec else ''
+        image_id = db_rec.get('image_id', -1)
 
         if self.data_format == 'zip':
             from utils import zipreader
@@ -121,8 +120,7 @@ class JointsDataset(Dataset):
 
         meta = {
             'image': image_file,
-            'filename': filename,
-            'imgnum': imgnum,
+            'image_id': image_id,
             'joints': joints,
             'joints_vis': joints_vis,
             'center': c,

@@ -14,7 +14,8 @@ import pickle
 from collections import defaultdict
 from collections import OrderedDict
 
-import json_tricks as json
+# import json_tricks as json
+import ujson as json
 import numpy as np
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
@@ -52,7 +53,7 @@ class COCODataset(JointsDataset):
         [7,9],[8,10],[9,11],[2,3],[1,2],[1,3],[2,4],[3,5],[4,6],[5,7]]
     '''
     def __init__(self, cfg, root, image_set, is_train, transform=None):
-        super().__init__(cfg, root, image_set, is_train, transform)
+        super(COCODataset, self).__init__(cfg, root, image_set, is_train, transform)
         self.nms_thre = cfg.TEST.NMS_THRE
         self.image_thre = cfg.TEST.IMAGE_THRE
         self.oks_thre = cfg.TEST.OKS_THRE
@@ -184,8 +185,6 @@ class COCODataset(JointsDataset):
                 'scale': scale,
                 'joints_3d': joints_3d,
                 'joints_3d_vis': joints_3d_vis,
-                'filename': '',
-                'imgnum': 0,
             })
 
         return rec
