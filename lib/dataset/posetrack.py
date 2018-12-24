@@ -29,8 +29,8 @@ class PoseTrackDataset(JointsDataset):
     '''
     "keypoints": {
         0: "nose",
-        1: "left_eye",
-        2: "right_eye",
+        1: "head_bottom",
+        2: "head_top",
         3: "left_ear",
         4: "right_ear",
         5: "left_shoulder",
@@ -55,7 +55,7 @@ class PoseTrackDataset(JointsDataset):
         assert image_set in {'train', 'val', 'test'}
 
         self.num_joints = 17
-        self.flip_pairs = [[1, 2], [3, 4], [5, 6], [7, 8],
+        self.flip_pairs = [[3, 4], [5, 6], [7, 8],
                            [9, 10], [11, 12], [13, 14], [15, 16]]
         self.parent_ids = None
         self.pixel_std = 200

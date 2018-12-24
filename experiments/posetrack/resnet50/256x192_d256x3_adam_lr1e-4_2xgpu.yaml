@@ -1,4 +1,4 @@
-GPUS: '0'
+GPUS: '0,1'
 DATA_DIR: ''
 OUTPUT_DIR: 'output'
 LOG_DIR: 'log'
@@ -15,7 +15,8 @@ DATASET:
   SCALE_FACTOR: 0.3
 MODEL:
   NAME: 'pose_resnet'
-  PRETRAINED: 'models/pytorch/imagenet/resnet50-19c8e357.pth'
+#  PRETRAINED: 'models/pytorch/imagenet/resnet50-19c8e357.pth'
+  PRETRAINED: 'models/pytorch/pose_coco/pose_resnet_50_256x192.pth.tar'
   IMAGE_SIZE:
   - 192
   - 256
@@ -44,22 +45,22 @@ TRAIN:
   BATCH_SIZE: 32
   SHUFFLE: true
   BEGIN_EPOCH: 0
-  END_EPOCH: 140
+  END_EPOCH: 20
   RESUME: false
   OPTIMIZER: 'adam'
-  LR: 0.001
+  LR: 0.0001
   LR_FACTOR: 0.1
   LR_STEP:
-  - 90
-  - 120 
+  - 10
+  - 15
   WD: 0.0001
   GAMMA1: 0.99
   GAMMA2: 0.0
   MOMENTUM: 0.9
   NESTEROV: false
 TEST:
-  BATCH_SIZE: 32
-  COCO_BBOX_FILE: 'data/coco/person_detection_results/COCO_val2017_detections_AP_H_56_person.json'
+  BATCH_SIZE: 16
+  COCO_BBOX_FILE: ''
   BBOX_THRE: 1.0
   FLIP_TEST: false
   IMAGE_THRE: 0.0

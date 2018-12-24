@@ -263,7 +263,7 @@ class PoseResNet(nn.Module):
                     nn.init.constant_(m.weight, 1)
                     nn.init.constant_(m.bias, 0)
             logger.info('=> init final conv weights from normal distribution')
-            for m in self.final_layer.modules():
+            for name, m in self.final_layer.named_modules():
                 if isinstance(m, nn.Conv2d):
                     # nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                     logger.info('=> init {}.weight as normal(0, 0.001)'.format(name))
