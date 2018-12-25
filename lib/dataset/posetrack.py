@@ -161,7 +161,8 @@ class PoseTrackDataset(JointsDataset):
             if det_res['category_id'] != 1:
                 continue
 
-            image = self.all_images_dict[det_res['image_id']]
+            image_id = det_res['image_id']
+            image = self.all_images_dict[image_id]
             image_path = os.path.join(self.root, image['file_name'])
             box = det_res['bbox']
             score = det_res['score']
@@ -177,6 +178,7 @@ class PoseTrackDataset(JointsDataset):
                 (self.num_joints, 3), dtype=np.float)
             kpt_db.append({
                 'image': image_path,
+                'image_id': image_id,
                 'center': center,
                 'scale': scale,
                 'score': score,
