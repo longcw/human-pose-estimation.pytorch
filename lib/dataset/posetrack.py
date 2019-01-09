@@ -309,6 +309,6 @@ class PoseTrackDataset(JointsDataset):
         name_values, perf_indicator = posetrack_evaluate(anno_root, res_folder, output_folder,
                                                          eval_pose=True, eval_tracking=False, save_per_seq=False)
 
-        logger.info('=> coco eval results saved to %s' % output_folder)
+        logger.info('=> posetrack eval results saved to %s' % output_folder)
 
         return name_values, perf_indicator
