@@ -11,6 +11,8 @@ from __future__ import print_function
 import logging
 import time
 import os
+from collections import defaultdict
+import ujson as json
 
 import numpy as np
 import torch
@@ -212,8 +214,8 @@ def inference(config, image_loader, image_dataset, model, output_dir):
     all_preds = np.zeros((num_samples, config.MODEL.NUM_JOINTS, 3),
                          dtype=np.float32)
     all_boxes = np.zeros((num_samples, 5))
-    image_path = []
-    image_ids = []
+    all_image_pathes = []
+    all_image_ids = []
     idx = 0
     with torch.no_grad():
         end = time.time()
@@ -256,9 +258,11 @@ def inference(config, image_loader, image_dataset, model, output_dir):
             # double check this all_boxes parts
             all_boxes[idx:idx + num_images, 0:4] = tlwhs
             all_boxes[idx:idx + num_images, 4] = score
-            image_path.extend(meta['image'])
+            all_image_pathes.extend(meta['image'])
             if config.DATASET.DATASET == 'mot':
-                image_ids.extend(meta['image_id'])
+                seq_names, frame_ids = meta['image_id']
+                frame_ids = frame_ids.numpy().astype(int)
+                all_image_ids.extend(list(zip(seq_names, frame_ids)))
 
             idx += num_images
 
@@ -268,11 +272,25 @@ def inference(config, image_loader, image_dataset, model, output_dir):
                     i, len(image_loader), batch_time=batch_time)
                 logger.info(msg)
 
-                prefix = '{}_{}'.format(os.path.join(output_dir, 'val'), i)
+                prefix = '{}_{}'.format(os.path.join(output_dir, 'inference'), i)
                 pred, _ = get_max_preds(output.numpy())
                 save_debug_images(config, input, meta, target, pred * 4, output, prefix)
 
-    return 0
+    # write output
+    frame_results = defaultdict(list)
+    for image_id, pred, box in zip(all_image_ids, all_preds, all_boxes):
+        frame_results[image_id].append((pred.astype(float).tolist(), box.astype(float).tolist()))
+
+    final_results = {}
+    for image_id, results in frame_results.items():
+        keypoints, boxes = zip(*results)
+        final_results[image_id] = {'keypoints': keypoints, 'boxes': boxes}
+
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+    with open(os.path.join(output_dir, 'box_keypoints.json'), 'w') as f:
+        json.dump(final_results, f)
+    logger.info('Save results to {}'.format(os.path.join(output_dir, 'box_keypoints.json')))
 
 
 # markdown format output
