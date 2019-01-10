@@ -40,11 +40,13 @@ class MPIIDataset(JointsDataset):
     {13, "LAnkle"},//l ankle
     {14, "Chest"},// thorax}
     """
+
+    num_joints = 16
+    flip_pairs = [[0, 5], [1, 4], [2, 3], [10, 15], [11, 14], [12, 13]]
+
     def __init__(self, cfg, root, image_set, is_train, transform=None):
         super(MPIIDataset, self).__init__(cfg, root, image_set, is_train, transform)
 
-        self.num_joints = 16
-        self.flip_pairs = [[0, 5], [1, 4], [2, 3], [10, 15], [11, 14], [12, 13]]
         self.parent_ids = [1, 2, 6, 6, 3, 4, 6, 6, 7, 8, 11, 12, 7, 7, 13, 14]
 
         self.db = self._get_db()

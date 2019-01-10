@@ -52,6 +52,11 @@ class COCODataset(JointsDataset):
         [16,14],[14,12],[17,15],[15,13],[12,13],[6,12],[7,13], [6,7],[6,8],
         [7,9],[8,10],[9,11],[2,3],[1,2],[1,3],[2,4],[3,5],[4,6],[5,7]]
     '''
+
+    num_joints = 17
+    flip_pairs = [[1, 2], [3, 4], [5, 6], [7, 8],
+                       [9, 10], [11, 12], [13, 14], [15, 16]]
+
     def __init__(self, cfg, root, image_set, is_train, transform=None):
         super(COCODataset, self).__init__(cfg, root, image_set, is_train, transform)
         self.nms_thre = cfg.TEST.NMS_THRE
@@ -83,9 +88,6 @@ class COCODataset(JointsDataset):
         self.num_images = len(self.image_set_index)
         logger.info('=> num_images: {}'.format(self.num_images))
 
-        self.num_joints = 17
-        self.flip_pairs = [[1, 2], [3, 4], [5, 6], [7, 8],
-                           [9, 10], [11, 12], [13, 14], [15, 16]]
         self.parent_ids = None
 
         self.db = self._get_db()

@@ -50,13 +50,15 @@ class PoseTrackDataset(JointsDataset):
         [16,14],[14,12],[17,15],[15,13],[12,13],[6,12],[7,13], [6,7],[6,8],
         [7,9],[8,10],[9,11],[2,3],[1,2],[1,3],[2,4],[3,5],[4,6],[5,7]]
     '''
+
+    num_joints = 17
+    flip_pairs = [[3, 4], [5, 6], [7, 8],
+                  [9, 10], [11, 12], [13, 14], [15, 16]]
+
     def __init__(self, cfg, root, image_set, is_train, transform=None):
         super(PoseTrackDataset, self).__init__(cfg, root, image_set, is_train, transform)
         assert image_set in {'train', 'val', 'test'}
 
-        self.num_joints = 17
-        self.flip_pairs = [[3, 4], [5, 6], [7, 8],
-                           [9, 10], [11, 12], [13, 14], [15, 16]]
         self.parent_ids = None
         self.pixel_std = 200
 

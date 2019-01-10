@@ -65,6 +65,7 @@ class JointsDataset(Dataset):
 
         image_file = db_rec['image']
         image_id = db_rec.get('image_id', -1)
+        bbox_tlwh = db_rec.get('bbox_tlwh', None)
 
         if self.data_format == 'zip':
             from utils import zipreader
@@ -121,6 +122,7 @@ class JointsDataset(Dataset):
         meta = {
             'image': image_file,
             'image_id': image_id,
+            'bbox_tlwh': bbox_tlwh,
             'joints': joints,
             'joints_vis': joints_vis,
             'center': c,
